@@ -1,0 +1,10 @@
+numpy
+SciPy
+pandas
+scikit-learn
+torch
+matplotlib
+seaborn
+jupyterlab
+tqdm
+numpyarray_to_latex
