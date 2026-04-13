@@ -58,6 +58,8 @@ N_test = 1000
 noise = 0.05    
 
 print("generating narx1 data...")
+
+
 u_train_1, y_train_1 = sim_narx1(N_train, noise)
 u_test_1, y_test_1   = sim_narx1(N_test, noise)
 
@@ -65,8 +67,69 @@ print(f"narx1 train : u {u_train_1.shape}, y {y_train_1.shape}")
 print(f"narx1 test  : u {u_test_1.shape}, y {y_test_1.shape}")
 
 print("\ngenerating narx2 data...")
+
 u_train_2, y_train_2 = sim_narx2(N_train, noise)
 u_test_2, y_test_2   = sim_narx2(N_test, noise)
-
 print(f"narx2 train : u {u_train_2.shape}, y {y_train_2.shape}")
 print(f"narx2 test  : u {u_test_2.shape}, y {y_test_2.shape}")
+
+
+
+
+# we use sliding windows to create our feature matrix x and target vector y
+def make_sliding_window(U, Y, na, nb, d):
+    """
+    U: input signal (N, n_inputs)
+    Y: output signal (N, n_outputs)
+    na: output lags to consider
+    nb: input lags to consider
+    d: delay for the input
+    """
+    n_samples = Y.shape[0]
+    n_outputs = Y.shape[1]
+    n_inputs  = U.shape[1]
+    start = max(na, nb + d)
+    X, Y_target = [], []
+    
+    for k in range(start, n_samples - 1):
+        features = []
+        for j in range(n_outputs):
+            features.extend(Y[k - na + 1 : k + 1, j][::-1])
+
+        for j in range(n_inputs):
+            features.extend(U[k - d - nb + 1 : k - d + 1, j][::-1])
+            
+        X.append(features)
+        Y_target.append(Y[k + 1]) 
+        
+    return np.array(X), np.array(Y_target)
+
+# we used MI to analyze which lags are most informative for predicting y(k+1) 
+def analyze_mi_lags(U, Y, max_lag=10, name="NARX1"):
+    print(f"\ncomputing mutual information for {name}...")
+    
+    # first with max lag and d=0 to see who is useful for predicting y(k+1)
+    X_mega, Y_target = make_sliding_window(U, Y, na=max_lag, nb=max_lag, d=0)
+    
+   
+    mi_scores = mutual_info_regression(X_mega, Y_target[:, 0], random_state=42)
+    
+    # we can separate the scores for output lags and input lags for better visualization
+    n_outputs = Y.shape[1]
+    mi_y = mi_scores[0 : n_outputs * max_lag]
+    mi_u = mi_scores[n_outputs * max_lag :]
+    
+    # graph
+    plt.figure(figsize=(12, 5))
+    plt.bar(range(len(mi_scores)), mi_scores, color='teal', alpha=0.7)
+    plt.title(f"Mutual Information Scores: Lags vs y1(k+1) [{name}]")
+    plt.xlabel("Feature Index (Past Lags)")
+    plt.ylabel("Mutual Information Score")
+    plt.grid(axis='y', linestyle='--', alpha=0.5)
+    plt.show()
+    
+    return mi_scores
+ew3
+
+mi_narx1 = analyze_mi_lags(u_train_1, y_train_1, name="NARX1")
+mi_narx2 = analyze_mi_lags(u_train_2, y_train_2, name="NARX2")
