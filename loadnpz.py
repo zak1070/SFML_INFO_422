@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #TODO mettre le bon nom de fichier
 data = np.load('StudentdataNARX.npz') 
 Utr = data['Utr']  
