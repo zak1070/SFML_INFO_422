@@ -8,3 +8,4 @@ seaborn
 jupyterlab
 tqdm
 numpyarray_to_latex
+sklearn

@@ -1,4 +1,7 @@
 import numpy as np
+from sklearn.feature_selection import mutual_info_regression
+import matplotlib.pyplot as plt
+
 
 def sim_narx1(N, noise, u=None):
     # init to zero (handles y(0)=0 automatically)
@@ -68,8 +71,13 @@ print(f"narx1 test  : u {u_test_1.shape}, y {y_test_1.shape}")
 
 print("\ngenerating narx2 data...")
 
-u_train_2, y_train_2 = sim_narx2(N_train, noise)
-u_test_2, y_test_2   = sim_narx2(N_test, noise)
+# lower noise and input range to prevent overflow in narx2
+noise_narx2 = 0.0001
+u_train_2 = np.random.uniform(-0.1, 0.1, (N_train + 1, 2))
+u_test_2 = np.random.uniform(-0.1, 0.1, (N_test + 1, 2))
+
+u_train_2, y_train_2 = sim_narx2(N_train, noise_narx2, u=u_train_2)
+u_test_2, y_test_2   = sim_narx2(N_test, noise_narx2, u=u_test_2)
 print(f"narx2 train : u {u_train_2.shape}, y {y_train_2.shape}")
 print(f"narx2 test  : u {u_test_2.shape}, y {y_test_2.shape}")
 
@@ -111,6 +119,8 @@ def analyze_mi_lags(U, Y, max_lag=10, name="NARX1"):
     # first with max lag and d=0 to see who is useful for predicting y(k+1)
     X_mega, Y_target = make_sliding_window(U, Y, na=max_lag, nb=max_lag, d=0)
     
+    # check shapes before MI
+    print(f"check shapes: X={X_mega.shape}, Y={Y_target.shape}")
    
     mi_scores = mutual_info_regression(X_mega, Y_target[:, 0], random_state=42)
     
@@ -126,10 +136,31 @@ def analyze_mi_lags(U, Y, max_lag=10, name="NARX1"):
     plt.xlabel("Feature Index (Past Lags)")
     plt.ylabel("Mutual Information Score")
     plt.grid(axis='y', linestyle='--', alpha=0.5)
-    plt.show()
+    plt.savefig(f"mi_{name}.png", bbox_inches='tight')
+    plt.close()
     
     return mi_scores
-ew3
 
 mi_narx1 = analyze_mi_lags(u_train_1, y_train_1, name="NARX1")
 mi_narx2 = analyze_mi_lags(u_train_2, y_train_2, name="NARX2")
+
+# plot first 500 steps to visually check the simulation
+print("\nplotting time series...")
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+
+# narx1 plot
+axes[0].plot(y_train_1[:500, 0], label='y1')
+axes[0].plot(y_train_1[:500, 1], label='y2')
+axes[0].set_title('NARX1 Simulation')
+axes[0].legend()
+
+# narx2 plot
+axes[1].plot(y_train_2[:500, 0], label='y1')
+axes[1].plot(y_train_2[:500, 1], label='y2')
+axes[1].set_title('NARX2 Simulation')
+axes[1].set_ylabel('Amplitude')
+axes[1].legend()
+
+plt.tight_layout()
+plt.savefig("time_series.png", bbox_inches='tight')
+plt.close()
